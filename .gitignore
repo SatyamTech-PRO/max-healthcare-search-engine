@@ -1,0 +1,21 @@
+# Python
+backend/venv/
+**/__pycache__/
+*.pyc
+
+# Database
+*.db
+
+# Generated CSVs
+*.csv
+
+# Next.js
+frontend/node_modules/
+frontend/.next/
+
+# Environment files
+.env
+.env.local
+
+# Logs
+*.log
