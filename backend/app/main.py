@@ -135,16 +135,35 @@ def search(q: str = Query(..., min_length=1)):
                     results.append(SearchResult(id=inv_id, name=r['name'], type='investigation', details=details, score=score))
                     existing_ids.add(f"investigation_{inv_id}")
 
-    # Sort results by score (descending for RapidFuzz, ascending for FTS5 rank if we unify them, but let's just sort by RapidFuzz score or FTS5 score depending on how we normalize it. FTS5 ranks are usually negative and smaller is better. Let's just return what we have since it's already FTS5 first then fuzzy.)
-    # Actually, we can just group them by type in the frontend. We will send them sorted by type or just as is.
-    
-    # Sort: exact/fts5 first (higher is better? FTS5 is negative, so abs(rank) is positive. Let's just sort by type and name for now, or just let frontend handle)
-    results.sort(key=lambda x: (x.type, x.name))
+            # Deduplicate by name (case-insensitive)
+    seen_names = set()
+    unique_results = []
+    for r in results:
+        key = r.name.lower().strip()
+        if key not in seen_names:
+            seen_names.add(key)
+            unique_results.append(r)
+    results = unique_results
+
+    # Exact match floats to top
+    q_lower = q.lower().strip()
+    q_words = set(q_lower.split())
+    results.sort(key=lambda x: (
+        0 if x.name.lower().strip() == q_lower else
+        1 if all(w in x.name.lower() for w in q_words) else
+        2,
+        x.type,
+        x.name
+    ))
 
     # Log analytics
     database.log_search(q, "all", len(results), 0.0)
 
-    return SearchResponse(query=q, results=results, total=len(results))
+    return SearchResponse(
+        query=q,
+        results=results,
+        total=len(results)
+    )
 
 @app.get("/api/stats")
 def stats():
